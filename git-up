@@ -1,0 +1,27 @@
+#!/usr/bin/bash
+
+BGre='\e[1;32m';
+BWhi='\e[1;37m';
+RCol='\e[0m'
+
+die () { echo >&2 "$@"; exit 1; }
+
+REMOTE=$1
+shift
+
+[ ! -z "$REMOTE" -a "$REMOTE" != " " ] || die "Remote name is empty or blank"
+
+for branch in $(join <(git branch -a \
+       | grep "remotes/$REMOTE" \
+       | awk -F '/' '{print $3}' \
+       | sort) \
+     <(git branch -a \
+       | grep -v 'remotes/' \
+       | awk '{ if ($1 == "*") { print $2 } else { print $1 } }' \
+       | sort) \
+  | grep -vE '^[[:space:]]*$' \
+  | uniq); do
+  echo -e "${BWhi}updating $BGre$branch$RCol"
+  git fetch $REMOTE $branch  || die "failed to fetch $branch"
+  git rebase $@ "$REMOTE/$branch" $branch || die
+done
